@@ -64,4 +64,4 @@
 ## 📚 开发参考
 
 本游戏的交互设计与迭代过程参考了以下 DeepSeek 对话记录：  
-[点击查看完整讨论](https://chat.deepseek.com/share/uao5efa7ia0j0dt40d)
+[点击查看完整讨论](https://chat.deepseek.com/share/ivenq87no88jk7xiqg)
