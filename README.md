@@ -3,7 +3,7 @@
 ![游戏截图占位](screenshot.png)
 
 > 一个基于颜色分类的益智游戏，灵感来自汉诺塔，但玩法完全不同。  
-> 在线试玩：https://yourusername.github.io/colorful-hanoi-puzzle
+> 在线试玩：https://ZXNPC.github.io/colorful-hanoi-puzzle
 
 ## 游戏简介
 
