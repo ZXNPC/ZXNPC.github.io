@@ -65,3 +65,5 @@
 
 本游戏的交互设计与迭代过程参考了以下 DeepSeek 对话记录：  
 [点击查看完整讨论](https://chat.deepseek.com/share/ivenq87no88jk7xiqg)
+
+灵感来源于：[这条微博](https://weibo.com/7301389190/QuHlEEQDF)
