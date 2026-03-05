@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>色彩汉诺塔 · 纯色分拣（自由拖拽版）</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>色彩汉诺塔 · 移动优化版</title>
     <style>
         * {
             box-sizing: border-box;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         body {
             background: linear-gradient(145deg, #2b3a4a 0%, #1d2a36 100%);
@@ -17,106 +18,110 @@
             align-items: center;
             font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
             margin: 0;
-            padding: 16px;
+            padding: 8px;
         }
         .game-container {
             background: #3e5a6f;
             background-image: radial-gradient(circle at 30% 20%, #527a94, #2d4050);
-            border-radius: 48px;
-            padding: 30px 30px 40px;
+            border-radius: 36px;
+            padding: 16px 16px 24px;
             box-shadow: 0 25px 40px rgba(0,0,0,0.6), inset 0 1px 4px rgba(255,255,255,0.2);
             border: 1px solid #80b0cc;
+            width: 100%;
+            max-width: 700px;
         }
         .header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             color: #edf4fa;
             text-shadow: 2px 2px 0 #1f2e3a;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 8px;
         }
         .title h1 {
             margin: 0;
-            font-size: 2.2rem;
+            font-size: 1.8rem;
             font-weight: 600;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             background: linear-gradient(135deg, #f9e084, #f4cba2);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: none;
+            line-height: 1.2;
         }
         .title p {
-            margin: 4px 0 0;
-            font-size: 0.95rem;
+            margin: 2px 0 0;
+            font-size: 0.8rem;
             opacity: 0.9;
             font-style: italic;
         }
         .control-panel {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             background: #263b48;
-            padding: 12px 20px;
-            border-radius: 60px;
+            padding: 8px 16px;
+            border-radius: 40px;
             border: 1px solid #70a5c0;
             box-shadow: inset 0 2px 5px #101c26;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .badge {
             background: #17242e;
-            border-radius: 40px;
-            padding: 8px 22px;
+            border-radius: 30px;
+            padding: 6px 16px;
             color: #ffecbb;
             font-weight: bold;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             border: 1px solid #dba959;
             box-shadow: 0 2px 0 #0f1a21;
+            min-width: 70px;
+            text-align: center;
         }
         .btn-group {
             display: flex;
-            gap: 6px;
+            gap: 4px;
         }
         button {
             background: #e3b87c;
             border: none;
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: bold;
             color: #1e2f3b;
-            width: 46px;
-            height: 46px;
+            width: 40px;
+            height: 40px;
             border-radius: 30px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 6px 0 #926d3d, 0 6px 10px black;
+            box-shadow: 0 5px 0 #926d3d, 0 6px 8px black;
             transition: all 0.06s ease;
             border: 1px solid #ffde9e;
+            touch-action: manipulation;
+            padding: 0;
         }
         button:active {
-            transform: translateY(5px);
-            box-shadow: 0 1px 0 #926d3d, 0 6px 10px black;
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #926d3d, 0 6px 8px black;
         }
         button.reset-btn {
             background: #b0c7d9;
-            box-shadow: 0 5px 0 #6b7f91;
+            box-shadow: 0 4px 0 #6b7f91;
             width: auto;
-            padding: 0 24px;
-            font-size: 1.2rem;
-            letter-spacing: 1px;
-        }
-        button:disabled {
-            opacity: 0.5;
-            transform: translateY(3px);
-            box-shadow: 0 2px 0 #6b7f91;
-            pointer-events: none;
+            padding: 0 18px;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
         }
         .canvas-wrapper {
             background: #253d49;
-            border-radius: 60px;
-            padding: 20px 20px 0 20px;
+            border-radius: 40px;
+            padding: 12px 12px 0;
             border: 3px solid #6f8fa0;
             box-shadow: inset 0 0 0 2px #aecfdf, 0 18px 20px -8px black;
+            margin: 8px 0 4px;
         }
         canvas {
             display: block;
@@ -124,10 +129,10 @@
             height: auto;
             background: #2c4757;
             background-image: radial-gradient(circle at 30% 40%, #3b6175, #1f3847);
-            border-radius: 40px 40px 20px 20px;
+            border-radius: 30px 30px 16px 16px;
             box-shadow: inset 0 -5px 0 #15232b, 0 10px 10px rgba(0,0,0,0.4);
             cursor: grab;
-            touch-action: none;
+            touch-action: none; /* 禁止触摸滚动/缩放 */
         }
         canvas.dragging {
             cursor: grabbing;
@@ -136,30 +141,82 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 20px;
+            margin-top: 12px;
             color: #deecf2;
             font-weight: 500;
             background: #1f3643c9;
-            padding: 10px 24px;
-            border-radius: 50px;
+            padding: 8px 16px;
+            border-radius: 40px;
             backdrop-filter: blur(4px);
             border: 1px solid #80afc7;
+            font-size: 0.9rem;
         }
         .status {
             background: #14212b;
-            padding: 6px 20px;
-            border-radius: 36px;
-            font-size: 1.2rem;
+            padding: 4px 16px;
+            border-radius: 30px;
             color: #fadf9e;
             box-shadow: inset 0 2px 3px #03090e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60%;
         }
         .move-counter {
             background: #2b3d47;
-            padding: 6px 22px;
-            border-radius: 36px;
+            padding: 4px 16px;
+            border-radius: 30px;
             font-weight: 700;
-            font-size: 1.3rem;
             border: 1px solid #ddb165;
+            white-space: nowrap;
+        }
+
+        /* 针对小屏幕的进一步优化 */
+        @media (max-width: 500px) {
+            .game-container {
+                padding: 12px 12px 18px;
+            }
+            .title h1 {
+                font-size: 1.5rem;
+            }
+            .title p {
+                font-size: 0.7rem;
+            }
+            .control-panel {
+                padding: 6px 12px;
+                gap: 6px;
+            }
+            .badge {
+                padding: 4px 12px;
+                font-size: 1rem;
+                min-width: 60px;
+            }
+            button {
+                width: 36px;
+                height: 36px;
+                font-size: 1.2rem;
+            }
+            button.reset-btn {
+                padding: 0 14px;
+                font-size: 0.9rem;
+            }
+            .footer {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .control-panel {
+                justify-content: space-between;
+            }
+            .title {
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -168,7 +225,7 @@
     <div class="header">
         <div class="title">
             <h1>🌈 色彩汉诺塔</h1>
-            <p>拖拽珠子 · 集齐 N 根纯色柱子（自由移动 / 支持 N=10）</p>
+            <p>拖拽珠子 · 集齐 N 根纯色柱子（触摸优化）</p>
         </div>
         <div class="control-panel">
             <div class="badge" id="nDisplay">N = 3</div>
@@ -176,12 +233,12 @@
                 <button id="decrementN" aria-label="减少柱子">−</button>
                 <button id="incrementN" aria-label="增加柱子">+</button>
             </div>
-            <button class="reset-btn" id="resetGame">⟲ 重置</button>
+            <button class="reset-btn" id="resetGame">重</button>
         </div>
     </div>
 
     <div class="canvas-wrapper">
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <canvas id="gameCanvas" width="900" height="500"></canvas>
     </div>
 
     <div class="footer">
@@ -234,9 +291,13 @@
         const decBtn = document.getElementById('decrementN');
         const incBtn = document.getElementById('incrementN');
 
-        // 常量：绘制参数
-        const START_X = 60;
-        const END_X = canvas.width - 60;
+        // 绘制参数（根据画布尺寸调整）
+        const START_X = 70;                        // 左右边距稍大，适应更多柱子
+        const END_X = canvas.width - 70;
+        const BASE_Y = 420;                        // 柱子底部Y坐标（抬高以适应更大珠子）
+        const PEG_WIDTH = 48;                       // 柱子宽度
+        const BALL_RADIUS = 20;                      // 珠子半径（明显增大）
+        const BALL_DIAMETER = BALL_RADIUS * 2;
 
         // ----- 辅助函数: 更新显示文字 -----
         function updateUI() {
@@ -297,12 +358,7 @@
 
             const totalPegs = pegs.length;
             const step = (END_X - START_X) / (totalPegs - 1);
-
-            const pegWidth = 40;
-            const ballRadius = 14;
-            const baseY = 340;
-            const ballDiameter = ballRadius * 2;
-            const pegHeight = n * ballDiameter;
+            const pegHeight = n * BALL_DIAMETER;
 
             // 基底
             ctx.fillStyle = '#8b6e4b';
@@ -310,7 +366,7 @@
             ctx.shadowBlur = 8;
             ctx.shadowOffsetY = 3;
             ctx.beginPath();
-            ctx.rect(30, baseY + 6, canvas.width - 60, 16);
+            ctx.rect(30, BASE_Y + 8, canvas.width - 60, 20);
             ctx.fill();
             ctx.shadowBlur = 0;
             ctx.shadowOffsetY = 0;
@@ -331,7 +387,7 @@
                 ctx.strokeStyle = '#5d4632';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.roundRect(x - pegWidth/2, baseY - pegHeight, pegWidth, pegHeight, 12);
+                ctx.roundRect(x - PEG_WIDTH/2, BASE_Y - pegHeight, PEG_WIDTH, pegHeight, 16);
                 ctx.fill();
                 ctx.stroke();
 
@@ -341,7 +397,7 @@
                 ctx.shadowOffsetY = 1;
                 ctx.fillStyle = '#dbbc8b';
                 ctx.beginPath();
-                ctx.roundRect(x - pegWidth/3, baseY - pegHeight + 2, pegWidth/2.5, pegHeight-4, 8);
+                ctx.roundRect(x - PEG_WIDTH/3, BASE_Y - pegHeight + 2, PEG_WIDTH/2.5, pegHeight-4, 12);
                 ctx.fill();
 
                 // 重置阴影（画珠子）
@@ -350,48 +406,48 @@
                 ctx.shadowOffsetY = 2;
                 ctx.shadowColor = '#0a1a21';
 
-                // 绘制珠子（直接使用peg，因为拖拽时源柱子已经pop掉了顶部珠子）
+                // 绘制珠子
                 for (let j = 0; j < peg.length; j++) {
                     const colorIndex = peg[j];
                     const color = COLORS[colorIndex] || '#aaa';
-                    const yPos = baseY - ballRadius - j * ballDiameter;
+                    const yPos = BASE_Y - BALL_RADIUS - j * BALL_DIAMETER;
 
-                    const gradient = ctx.createRadialGradient(x-4, yPos-4, 4, x, yPos, ballRadius+4);
+                    const gradient = ctx.createRadialGradient(x-5, yPos-5, 5, x, yPos, BALL_RADIUS+5);
                     gradient.addColorStop(0, color);
                     gradient.addColorStop(0.8, '#2c2c2c');
                     gradient.addColorStop(1, '#111');
                     ctx.beginPath();
-                    ctx.arc(x, yPos, ballRadius, 0, 2 * Math.PI);
+                    ctx.arc(x, yPos, BALL_RADIUS, 0, 2 * Math.PI);
                     ctx.fillStyle = gradient;
                     ctx.fill();
 
-                    ctx.shadowBlur = 4;
-                    ctx.shadowOffsetX = -1;
-                    ctx.shadowOffsetY = -1;
+                    ctx.shadowBlur = 5;
+                    ctx.shadowOffsetX = -2;
+                    ctx.shadowOffsetY = -2;
                     ctx.shadowColor = '#f5f9ff';
                     ctx.beginPath();
-                    ctx.arc(x-4, yPos-4, 5, 0, 2 * Math.PI);
+                    ctx.arc(x-5, yPos-5, 6, 0, 2 * Math.PI);
                     ctx.fillStyle = '#ffffff60';
                     ctx.fill();
 
-                    ctx.shadowBlur = 8;
-                    ctx.shadowColor = '#00000060';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#00000080';
                     ctx.shadowOffsetX = 1;
                     ctx.shadowOffsetY = 1;
                     ctx.strokeStyle = '#1f2e38';
-                    ctx.lineWidth = 1.5;
+                    ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(x, yPos, ballRadius, 0, 2 * Math.PI);
+                    ctx.arc(x, yPos, BALL_RADIUS, 0, 2 * Math.PI);
                     ctx.stroke();
                 }
 
-                // 柱子编号
+                // 柱子编号（加大字号）
                 ctx.shadowBlur = 0;
-                ctx.font = 'bold 16px "Segoe UI"';
+                ctx.font = 'bold 18px "Segoe UI"';
                 ctx.fillStyle = '#f0e5d2';
                 ctx.shadowColor = '#1e3a47';
                 ctx.shadowOffsetY = 2;
-                ctx.fillText(i+1, x-10, baseY + 28);
+                ctx.fillText(i+1, x-12, BASE_Y + 32);
             }
 
             // 如果正在拖拽，绘制跟随珠子
@@ -400,28 +456,28 @@
                 const y = dragState.mouseY;
                 const color = COLORS[dragState.color] || '#aaa';
 
-                ctx.shadowBlur = 12;
+                ctx.shadowBlur = 16;
                 ctx.shadowColor = '#ffffff';
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 0;
                 ctx.beginPath();
-                ctx.arc(x, y, ballRadius, 0, 2 * Math.PI);
+                ctx.arc(x, y, BALL_RADIUS, 0, 2 * Math.PI);
                 ctx.fillStyle = color + 'CC';
                 ctx.fill();
 
-                ctx.shadowBlur = 8;
+                ctx.shadowBlur = 10;
                 ctx.shadowColor = '#f5f9ff';
                 ctx.beginPath();
-                ctx.arc(x-3, y-3, 5, 0, 2 * Math.PI);
+                ctx.arc(x-4, y-4, 6, 0, 2 * Math.PI);
                 ctx.fillStyle = '#ffffff80';
                 ctx.fill();
 
-                ctx.shadowBlur = 8;
+                ctx.shadowBlur = 12;
                 ctx.shadowColor = '#00000080';
                 ctx.strokeStyle = '#1f2e38';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 2.5;
                 ctx.beginPath();
-                ctx.arc(x, y, ballRadius, 0, 2 * Math.PI);
+                ctx.arc(x, y, BALL_RADIUS, 0, 2 * Math.PI);
                 ctx.stroke();
             }
 
@@ -430,11 +486,11 @@
                 ctx.shadowBlur = 0;
                 ctx.fillStyle = '#d4f0d0a0';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.font = 'bold 42px "Segoe UI", cursive';
+                ctx.font = 'bold 52px "Segoe UI", cursive';
                 ctx.fillStyle = '#266b3e';
                 ctx.shadowColor = '#a0d8b0';
                 ctx.shadowBlur = 16;
-                ctx.fillText('🏆', 320, 200);
+                ctx.fillText('🏆', 330, 280);
             }
 
             ctx.shadowBlur = 0;
@@ -458,21 +514,21 @@
             return this;
         };
 
-        // 获取鼠标在canvas上的坐标
-        function getCanvasMouse(e) {
+        // 获取鼠标/触摸在canvas上的坐标
+        function getCanvasMouseFromClient(clientX, clientY) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            const mouseX = (e.clientX - rect.left) * scaleX;
-            const mouseY = (e.clientY - rect.top) * scaleY;
+            const mouseX = (clientX - rect.left) * scaleX;
+            const mouseY = (clientY - rect.top) * scaleY;
             return { x: mouseX, y: mouseY };
         }
 
-        // 根据鼠标X获取柱子索引
+        // 根据鼠标X获取柱子索引（扩大感应区为 step*0.5）
         function getPegIndexFromX(mouseX) {
             const totalPegs = pegs.length;
             const step = (END_X - START_X) / (totalPegs - 1);
-            const hitHalfWidth = step * 0.35;
+            const hitHalfWidth = step * 0.5; // 增大感应区
             for (let i = 0; i < totalPegs; i++) {
                 const pegX = START_X + i * step;
                 if (mouseX >= pegX - hitHalfWidth && mouseX <= pegX + hitHalfWidth) {
@@ -482,19 +538,13 @@
             return -1;
         }
 
-        // 鼠标按下：拿起珠子
-        function onMouseDown(e) {
-            e.preventDefault();
-            if (gameOver || dragState.active) return;
-
-            const { x, y } = getCanvasMouse(e);
-            const pegIndex = getPegIndexFromX(x);
-            if (pegIndex === -1) return;
+        // ----- 核心拖拽逻辑 -----
+        function handleDragStart(pegIndex, x, y) {
+            if (gameOver || dragState.active) return false;
 
             const srcPeg = pegs[pegIndex];
-            if (srcPeg.length === 0) return;
+            if (srcPeg.length === 0) return false;
 
-            // 拿起顶部珠子
             const topColor = srcPeg.pop();
             dragState.active = true;
             dragState.srcPeg = pegIndex;
@@ -505,30 +555,23 @@
             canvas.classList.add('dragging');
             updateUI();
             drawCanvas();
+            return true;
         }
 
-        // 鼠标移动：更新跟随位置
-        function onMouseMove(e) {
+        function handleDragMove(x, y) {
             if (!dragState.active) return;
-            e.preventDefault();
-
-            const { x, y } = getCanvasMouse(e);
             dragState.mouseX = x;
             dragState.mouseY = y;
             drawCanvas();
         }
 
-        // 鼠标松开：放置珠子
-        function onMouseUp(e) {
+        function handleDragEnd(x, y) {
             if (!dragState.active) return;
-            e.preventDefault();
 
-            const { x, y } = getCanvasMouse(e);
             const targetPegIndex = getPegIndexFromX(x);
 
             let moveSuccess = false;
             if (targetPegIndex !== -1 && targetPegIndex !== dragState.srcPeg) {
-                // 检查目标是否未满
                 if (pegs[targetPegIndex].length < n) {
                     pegs[targetPegIndex].push(dragState.color);
                     moveCount++;
@@ -539,18 +582,90 @@
             }
 
             if (!moveSuccess) {
-                // 放回原处
                 pegs[dragState.srcPeg].push(dragState.color);
             }
 
-            // 清除拖拽状态
             dragState.active = false;
             canvas.classList.remove('dragging');
             updateUI();
             drawCanvas();
         }
 
-        // 改变N并重置
+        // ----- 鼠标事件 -----
+        function onMouseDown(e) {
+            e.preventDefault();
+            const { x, y } = getCanvasMouseFromClient(e.clientX, e.clientY);
+            const pegIndex = getPegIndexFromX(x);
+            if (pegIndex !== -1) {
+                handleDragStart(pegIndex, x, y);
+            }
+        }
+
+        function onMouseMove(e) {
+            if (!dragState.active) return;
+            e.preventDefault();
+            const { x, y } = getCanvasMouseFromClient(e.clientX, e.clientY);
+            handleDragMove(x, y);
+        }
+
+        function onMouseUp(e) {
+            if (!dragState.active) return;
+            e.preventDefault();
+            const { x, y } = getCanvasMouseFromClient(e.clientX, e.clientY);
+            handleDragEnd(x, y);
+        }
+
+        // ----- 触摸事件 -----
+        function onTouchStart(e) {
+            e.preventDefault();
+            if (e.touches.length > 0) {
+                const touch = e.touches[0];
+                const { x, y } = getCanvasMouseFromClient(touch.clientX, touch.clientY);
+                const pegIndex = getPegIndexFromX(x);
+                if (pegIndex !== -1) {
+                    handleDragStart(pegIndex, x, y);
+                }
+            }
+        }
+
+        function onTouchMove(e) {
+            e.preventDefault();
+            if (!dragState.active) return;
+            if (e.touches.length > 0) {
+                const touch = e.touches[0];
+                const { x, y } = getCanvasMouseFromClient(touch.clientX, touch.clientY);
+                handleDragMove(x, y);
+            }
+        }
+
+        function onTouchEnd(e) {
+            e.preventDefault();
+            if (!dragState.active) return;
+            if (e.changedTouches.length > 0) {
+                const touch = e.changedTouches[0];
+                const { x, y } = getCanvasMouseFromClient(touch.clientX, touch.clientY);
+                handleDragEnd(x, y);
+            } else {
+                pegs[dragState.srcPeg].push(dragState.color);
+                dragState.active = false;
+                canvas.classList.remove('dragging');
+                updateUI();
+                drawCanvas();
+            }
+        }
+
+        function onTouchCancel(e) {
+            e.preventDefault();
+            if (dragState.active) {
+                pegs[dragState.srcPeg].push(dragState.color);
+                dragState.active = false;
+                canvas.classList.remove('dragging');
+                updateUI();
+                drawCanvas();
+            }
+        }
+
+        // ----- 改变N并重置 -----
         function changeN(delta) {
             let newN = n + delta;
             if (newN < MIN_N) newN = MIN_N;
@@ -564,6 +679,12 @@
         canvas.addEventListener('mousedown', onMouseDown);
         window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('mouseup', onMouseUp);
+
+        canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+        canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+        canvas.addEventListener('touchcancel', onTouchCancel, { passive: false });
+
         canvas.addEventListener('dragstart', (e) => e.preventDefault());
 
         resetBtn.addEventListener('click', initGame);
