@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>色彩汉诺塔 · 纯色分拣（自由移动·高对比色）</title>
+    <title>色彩汉诺塔 · 纯色分拣（自由拖拽版）</title>
     <style>
         * {
             box-sizing: border-box;
@@ -126,8 +126,11 @@
             background-image: radial-gradient(circle at 30% 40%, #3b6175, #1f3847);
             border-radius: 40px 40px 20px 20px;
             box-shadow: inset 0 -5px 0 #15232b, 0 10px 10px rgba(0,0,0,0.4);
-            cursor: pointer;
-            touch-action: manipulation;
+            cursor: grab;
+            touch-action: none;
+        }
+        canvas.dragging {
+            cursor: grabbing;
         }
         .footer {
             display: flex;
@@ -165,7 +168,7 @@
     <div class="header">
         <div class="title">
             <h1>🌈 色彩汉诺塔</h1>
-            <p>移动顶部珠子 · 集齐 N 根纯色柱子（高对比色 / 支持 N=10）</p>
+            <p>拖拽珠子 · 集齐 N 根纯色柱子（自由移动 / 支持 N=10）</p>
         </div>
         <div class="control-panel">
             <div class="badge" id="nDisplay">N = 3</div>
@@ -182,7 +185,7 @@
     </div>
 
     <div class="footer">
-        <div class="status" id="statusMessage">点击柱子选中 / 移动</div>
+        <div class="status" id="statusMessage">拖拽珠子进行移动</div>
         <div class="move-counter" id="moveCounter">步数 0</div>
     </div>
 </div>
@@ -191,10 +194,9 @@
     (function() {
         // ----- 配置参数 -----
         const MIN_N = 2;
-        const MAX_N = 10;                       // 支持最多 11 根柱子 (N+1)
-        // 高对比度10色方案 (色相均匀分布，饱和度/亮度高，确保清晰区分)
+        const MAX_N = 10;
         const COLORS = [
-            "",                                 // 索引0不用
+            "",
             "#E41A1C",  // 1 红
             "#FF8C00",  // 2 橙
             "#F0E442",  // 3 黄
@@ -208,11 +210,19 @@
         ];
 
         // ----- 全局变量 -----
-        let n = 3;                               // 当前珠子颜色数 = 柱子高度 = 前n根满柱
-        let pegs = [];                           // 每根柱子(数组) 存储从底到顶的颜色索引 (1~n)
-        let selectedPegIndex = null;              // 当前选中的柱子下标
+        let n = 3;
+        let pegs = [];
         let gameOver = false;
         let moveCount = 0;
+
+        // 拖拽状态
+        let dragState = {
+            active: false,
+            srcPeg: -1,
+            color: 0,
+            mouseX: 0,
+            mouseY: 0,
+        };
 
         // DOM 元素
         const canvas = document.getElementById('gameCanvas');
@@ -224,9 +234,9 @@
         const decBtn = document.getElementById('decrementN');
         const incBtn = document.getElementById('incrementN');
 
-        // 常量：绘制参数（自适应间距用）
-        const START_X = 60;                        // 左侧起始偏移（像素）
-        const END_X = canvas.width - 60;           // 右侧结束偏移
+        // 常量：绘制参数
+        const START_X = 60;
+        const END_X = canvas.width - 60;
 
         // ----- 辅助函数: 更新显示文字 -----
         function updateUI() {
@@ -235,32 +245,30 @@
             if (gameOver) {
                 statusDiv.innerText = '✨ 胜利！所有颜色各就各位 ✨';
             } else {
-                statusDiv.innerText = selectedPegIndex !== null ? `选中第 ${selectedPegIndex+1} 柱` : '点击柱子选中 / 移动';
+                statusDiv.innerText = dragState.active ? '拖动中...' : '拖拽珠子进行移动';
             }
         }
 
-        // ----- 初始化/重置 游戏 (根据当前n) -----
+        // ----- 初始化/重置游戏 -----
         function initGame() {
             pegs = [];
-            // 前 n 根柱子: 每根从底向上为 颜色1,2,...,n
             for (let i = 0; i < n; i++) {
                 const peg = [];
                 for (let c = 1; c <= n; c++) {
-                    peg.push(c);                  // 底部索引0 = 颜色1, 顶部 = 颜色n
+                    peg.push(c);
                 }
                 pegs.push(peg);
             }
-            // 第 n+1 根柱子 (索引n) 为空
-            pegs.push([]);                         // 空柱子
+            pegs.push([]); // 空柱子
 
-            selectedPegIndex = null;
+            dragState.active = false;
             gameOver = false;
             moveCount = 0;
             updateUI();
             drawCanvas();
         }
 
-        // ----- 检查胜利条件: 有 n 根柱子长度 = n 且所有珠子同色 -----
+        // ----- 检查胜利条件 -----
         function checkVictory() {
             if (gameOver) return true;
             let pureCount = 0;
@@ -273,9 +281,9 @@
                     }
                 }
             }
-            // 需要恰好 n 根纯色柱 (由于总珠子 n*n, 必然剩一根空柱)
             if (pureCount === n) {
                 gameOver = true;
+                dragState.active = false;
                 updateUI();
                 drawCanvas();
                 return true;
@@ -283,44 +291,20 @@
             return false;
         }
 
-        // ----- 移动逻辑: 从 src 到 dst, 合法返回 true -----
-        function tryMove(src, dst) {
-            if (src === dst) return false;
-            if (gameOver) return false;
-
-            const srcPeg = pegs[src];
-            const dstPeg = pegs[dst];
-
-            if (srcPeg.length === 0) return false;               // 源无珠子
-            if (dstPeg.length >= n) return false;                // 目标已满
-
-            // 自由移动：任何珠子都可以移动到未满的柱子
-            const srcTop = srcPeg[srcPeg.length - 1];
-            srcPeg.pop();
-            dstPeg.push(srcTop);
-            moveCount++;
-            updateUI();
-            drawCanvas();
-
-            // 移动后检查胜利
-            checkVictory();
-            return true;
-        }
-
-        // ----- 绘制画布（动态计算柱子位置）-----
+        // ----- 绘制画布 -----
         function drawCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const totalPegs = pegs.length;            // n+1
-            const step = (END_X - START_X) / (totalPegs - 1);  // 根据柱子数量自动调整间距
+            const totalPegs = pegs.length;
+            const step = (END_X - START_X) / (totalPegs - 1);
 
             const pegWidth = 40;
-            const ballRadius = 14;                     // 为了容纳更多柱子，稍微缩小珠子半径 (原16->14)
-            const baseY = 340;                          // 柱子底部Y坐标
+            const ballRadius = 14;
+            const baseY = 340;
             const ballDiameter = ballRadius * 2;
-            const pegHeight = n * ballDiameter;         // 柱子可视高度
+            const pegHeight = n * ballDiameter;
 
-            // 绘制所有柱子基底 (木台)
+            // 基底
             ctx.fillStyle = '#8b6e4b';
             ctx.shadowColor = '#1e2c33';
             ctx.shadowBlur = 8;
@@ -342,7 +326,7 @@
                 ctx.shadowOffsetX = 2;
                 ctx.shadowOffsetY = 2;
 
-                // 柱子本身 (半透明木质)
+                // 柱子本身
                 ctx.fillStyle = '#ae8f6b';
                 ctx.strokeStyle = '#5d4632';
                 ctx.lineWidth = 2;
@@ -351,7 +335,7 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // 柱子内衬高光
+                // 内衬高光
                 ctx.shadowBlur = 4;
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 1;
@@ -360,19 +344,18 @@
                 ctx.roundRect(x - pegWidth/3, baseY - pegHeight + 2, pegWidth/2.5, pegHeight-4, 8);
                 ctx.fill();
 
-                // 重置阴影 (画珠子要用清晰阴影)
+                // 重置阴影（画珠子）
                 ctx.shadowBlur = 6;
                 ctx.shadowOffsetX = 1;
                 ctx.shadowOffsetY = 2;
                 ctx.shadowColor = '#0a1a21';
 
-                // 绘制珠子 (从下往上)
+                // 绘制珠子（直接使用peg，因为拖拽时源柱子已经pop掉了顶部珠子）
                 for (let j = 0; j < peg.length; j++) {
                     const colorIndex = peg[j];
                     const color = COLORS[colorIndex] || '#aaa';
-                    const yPos = baseY - ballRadius - j * ballDiameter; // 底部j=0在最下
+                    const yPos = baseY - ballRadius - j * ballDiameter;
 
-                    // 珠子渐变
                     const gradient = ctx.createRadialGradient(x-4, yPos-4, 4, x, yPos, ballRadius+4);
                     gradient.addColorStop(0, color);
                     gradient.addColorStop(0.8, '#2c2c2c');
@@ -381,7 +364,7 @@
                     ctx.arc(x, yPos, ballRadius, 0, 2 * Math.PI);
                     ctx.fillStyle = gradient;
                     ctx.fill();
-                    // 高光
+
                     ctx.shadowBlur = 4;
                     ctx.shadowOffsetX = -1;
                     ctx.shadowOffsetY = -1;
@@ -391,7 +374,6 @@
                     ctx.fillStyle = '#ffffff60';
                     ctx.fill();
 
-                    // 边缘描边
                     ctx.shadowBlur = 8;
                     ctx.shadowColor = '#00000060';
                     ctx.shadowOffsetX = 1;
@@ -412,19 +394,38 @@
                 ctx.fillText(i+1, x-10, baseY + 28);
             }
 
-            // 绘制选中高亮 (金色边框)
-            if (selectedPegIndex !== null && !gameOver) {
-                const x = START_X + selectedPegIndex * step;
-                ctx.shadowBlur = 18;
-                ctx.shadowColor = '#ffcf8a';
-                ctx.strokeStyle = '#f5c542';
-                ctx.lineWidth = 6;
+            // 如果正在拖拽，绘制跟随珠子
+            if (dragState.active) {
+                const x = dragState.mouseX;
+                const y = dragState.mouseY;
+                const color = COLORS[dragState.color] || '#aaa';
+
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
                 ctx.beginPath();
-                ctx.roundRect(x - pegWidth/2 - 4, baseY - pegHeight - 4, pegWidth + 8, pegHeight + 12, 16);
+                ctx.arc(x, y, ballRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = color + 'CC';
+                ctx.fill();
+
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#f5f9ff';
+                ctx.beginPath();
+                ctx.arc(x-3, y-3, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ffffff80';
+                ctx.fill();
+
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#00000080';
+                ctx.strokeStyle = '#1f2e38';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(x, y, ballRadius, 0, 2 * Math.PI);
                 ctx.stroke();
             }
 
-            // 如果游戏结束，显示透明蒙层和胜利徽章
+            // 胜利蒙层
             if (gameOver) {
                 ctx.shadowBlur = 0;
                 ctx.fillStyle = '#d4f0d0a0';
@@ -436,13 +437,12 @@
                 ctx.fillText('🏆', 320, 200);
             }
 
-            // 重置阴影
             ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
         }
 
-        // 工具: canvas 圆角矩形
+        // 工具函数：圆角矩形
         CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
             if (w < 2 * r) r = w / 2;
             if (h < 2 * r) r = h / 2;
@@ -458,107 +458,120 @@
             return this;
         };
 
-        // ----- 点击画布处理（动态计算柱子位置）-----
-        function handleCanvasClick(e) {
-            if (gameOver) {
-                statusDiv.innerText = '游戏已胜利，点击重置继续';
-                return;
-            }
-
+        // 获取鼠标在canvas上的坐标
+        function getCanvasMouse(e) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;   // canvas 物理像素比例
-            const mouseCanvasX = (e.clientX - rect.left) * scaleX;
-
-            // 根据当前柱子数量动态计算步长和位置
-            const totalPegs = pegs.length;
-            const step = (END_X - START_X) / (totalPegs - 1);
-            // 感应半宽：取 step 的 0.35 倍，约等于柱子半宽+余量
-            const hitHalfWidth = step * 0.35;
-
-            let clickedIndex = -1;
-            for (let i = 0; i < totalPegs; i++) {
-                const pegX = START_X + i * step;
-                if (mouseCanvasX >= pegX - hitHalfWidth && mouseCanvasX <= pegX + hitHalfWidth) {
-                    clickedIndex = i;
-                    break;
-                }
-            }
-
-            // 点击空白区域
-            if (clickedIndex === -1) {
-                if (selectedPegIndex !== null) {
-                    selectedPegIndex = null;
-                    updateUI();
-                    drawCanvas();
-                }
-                return;
-            }
-
-            // 1. 没有选中任何柱子
-            if (selectedPegIndex === null) {
-                // 点击的柱子必须非空才能选中
-                if (pegs[clickedIndex].length > 0) {
-                    selectedPegIndex = clickedIndex;
-                } else {
-                    // 点击空柱子无反应，但取消之前的选中(已经是null)
-                }
-                updateUI();
-                drawCanvas();
-                return;
-            }
-
-            // 2. 已经选中了一个柱子
-            if (selectedPegIndex !== null) {
-                // 如果点击同一个柱子 -> 取消选中
-                if (clickedIndex === selectedPegIndex) {
-                    selectedPegIndex = null;
-                    updateUI();
-                    drawCanvas();
-                    return;
-                }
-
-                // 尝试移动
-                const success = tryMove(selectedPegIndex, clickedIndex);
-                if (success) {
-                    selectedPegIndex = null;  // 移动成功后清除选中
-                } else {
-                    // 移动失败：显示提示并取消选中
-                    statusDiv.innerText = '🚫 不合规移动 (源无珠子/目标已满)';
-                    selectedPegIndex = null;
-                    drawCanvas();
-                    updateUI(); // 更新状态文字
-                }
-            }
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+            return { x: mouseX, y: mouseY };
         }
 
-        // ----- 改变 N 并重置 -----
+        // 根据鼠标X获取柱子索引
+        function getPegIndexFromX(mouseX) {
+            const totalPegs = pegs.length;
+            const step = (END_X - START_X) / (totalPegs - 1);
+            const hitHalfWidth = step * 0.35;
+            for (let i = 0; i < totalPegs; i++) {
+                const pegX = START_X + i * step;
+                if (mouseX >= pegX - hitHalfWidth && mouseX <= pegX + hitHalfWidth) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        // 鼠标按下：拿起珠子
+        function onMouseDown(e) {
+            e.preventDefault();
+            if (gameOver || dragState.active) return;
+
+            const { x, y } = getCanvasMouse(e);
+            const pegIndex = getPegIndexFromX(x);
+            if (pegIndex === -1) return;
+
+            const srcPeg = pegs[pegIndex];
+            if (srcPeg.length === 0) return;
+
+            // 拿起顶部珠子
+            const topColor = srcPeg.pop();
+            dragState.active = true;
+            dragState.srcPeg = pegIndex;
+            dragState.color = topColor;
+            dragState.mouseX = x;
+            dragState.mouseY = y;
+
+            canvas.classList.add('dragging');
+            updateUI();
+            drawCanvas();
+        }
+
+        // 鼠标移动：更新跟随位置
+        function onMouseMove(e) {
+            if (!dragState.active) return;
+            e.preventDefault();
+
+            const { x, y } = getCanvasMouse(e);
+            dragState.mouseX = x;
+            dragState.mouseY = y;
+            drawCanvas();
+        }
+
+        // 鼠标松开：放置珠子
+        function onMouseUp(e) {
+            if (!dragState.active) return;
+            e.preventDefault();
+
+            const { x, y } = getCanvasMouse(e);
+            const targetPegIndex = getPegIndexFromX(x);
+
+            let moveSuccess = false;
+            if (targetPegIndex !== -1 && targetPegIndex !== dragState.srcPeg) {
+                // 检查目标是否未满
+                if (pegs[targetPegIndex].length < n) {
+                    pegs[targetPegIndex].push(dragState.color);
+                    moveCount++;
+                    moveSuccess = true;
+                    updateUI();
+                    checkVictory();
+                }
+            }
+
+            if (!moveSuccess) {
+                // 放回原处
+                pegs[dragState.srcPeg].push(dragState.color);
+            }
+
+            // 清除拖拽状态
+            dragState.active = false;
+            canvas.classList.remove('dragging');
+            updateUI();
+            drawCanvas();
+        }
+
+        // 改变N并重置
         function changeN(delta) {
             let newN = n + delta;
             if (newN < MIN_N) newN = MIN_N;
             if (newN > MAX_N) newN = MAX_N;
             if (newN === n) return;
             n = newN;
-            initGame();       // 重置所有
+            initGame();
         }
 
-        // ----- 事件绑定 -----
-        canvas.addEventListener('click', handleCanvasClick);
+        // 事件绑定
+        canvas.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        canvas.addEventListener('dragstart', (e) => e.preventDefault());
 
-        resetBtn.addEventListener('click', () => {
-            initGame();
-        });
-
-        decBtn.addEventListener('click', () => {
-            changeN(-1);
-        });
-
-        incBtn.addEventListener('click', () => {
-            changeN(1);
-        });
+        resetBtn.addEventListener('click', initGame);
+        decBtn.addEventListener('click', () => changeN(-1));
+        incBtn.addEventListener('click', () => changeN(1));
 
         // 启动游戏
         initGame();
-
     })();
 </script>
 </body>
